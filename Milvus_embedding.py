@@ -1,11 +1,11 @@
 from datetime import datetime
 import pymysql
 from pymilvus import connections, Collection, CollectionSchema, FieldSchema, DataType, utility
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from openai import OpenAI
-from KeyWord_Extractor import extract_keywords
+from keyword_extractor import extract_keywords
 import os
 import logging
+import kss
 
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
@@ -14,8 +14,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Milvus 연결
-connections.connect(host='mate.ajou.app', port='28116')
-
+connections.connect(
+    host=os.getenv("MILVUS_HOST"),
+    port=os.getenv("MILVUS_PORT")
+)
 # Milvus 컬렉션 스키마 정의
 collection_name = "a_mate"
 fields = [
@@ -67,7 +69,8 @@ def load_data_from_mysql():
             sql = """
                 SELECT c.id, content_text AS text, c.created_at AS createAt,
                        scrap_url AS scrapUrl, url_title AS urlTitle, c.data_type AS dataType, 
-                       org_file_name AS fileName, file_ref_index AS fileIndex
+                       org_file_name AS fileName, file_ref_index AS fileIndex,
+                       c.category AS category
                 FROM contents c
                 LEFT JOIN scrap_info si ON c.id = si.content_id
             """
@@ -79,7 +82,6 @@ def load_data_from_mysql():
                     row["createAt"] = row["createAt"].isoformat() if isinstance(row["createAt"], (datetime,)) else row["createAt"]
                 if "dataType" in row:
                     row["dataType"] = data_type_map.get(row["dataType"], str(row["dataType"]))
-                row["category"] = "Facilities"
             return results
     finally:
         conn.close()
@@ -87,8 +89,18 @@ def load_data_from_mysql():
 # 텍스트 청킹 및 임베딩
 def process_json_item(item: dict):
     text = item.get("text", "")
-    splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)
-    chunks = splitter.split_text(text)
+    sentences = kss.split_sentences(text)
+    chunks = []
+    current_chunk = ""
+    chunk_size = 300
+    for sentence in sentences:
+        if len(current_chunk) + len(sentence) <= chunk_size:
+            current_chunk += " " + sentence
+        else:
+            chunks.append(current_chunk.strip())
+            current_chunk = sentence
+    if current_chunk:
+        chunks.append(current_chunk.strip())
 
     metadata_base = {
         "createAt": str(item.get("createAt", "")) if item.get("createAt") is not None else "",
@@ -101,7 +113,8 @@ def process_json_item(item: dict):
 
     insert_data = []
     for chunk in chunks:
-        embedding = openai.embeddings.create(input=chunk, model="text-embedding-ada-002").data[0].embedding
+        full_chunk = f"{item.get("urlTitle")}\n{chunk}"
+        embedding = openai.embeddings.create(input=full_chunk, model="text-embedding-ada-002").data[0].embedding
         keywords = extract_keywords(chunk)
         ## 추출된 키워드들을 키워드 데이터베이스에 저장
         for keyword in keywords:
@@ -150,6 +163,6 @@ def embed_all_json_from_mysql():
     logging.info(f"Total {total_chunks} chunks inserted into Milvus.")
 
 
-# 실행
+#실행ㅋ
 if __name__ == "__main__":
     embed_all_json_from_mysql()
