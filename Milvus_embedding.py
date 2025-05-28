@@ -52,17 +52,20 @@ else:
 # OpenAI API 설정
 openai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# MySQL에서 데이터 불러오기
-def load_data_from_mysql():
-    conn = pymysql.connect(
-        host="mate.ajou.app",
-        port=28115,
-        user="amate_admin",
-        password="Amate2025*",
-        db="amate",
+def get_mysql_connection():
+    return pymysql.connect(
+        host=os.getenv("DB_HOST"),
+        port=int(os.getenv("DB_PORT")),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        db=os.getenv("DB_NAME"),
         charset="utf8mb4",
         cursorclass=pymysql.cursors.DictCursor
     )
+
+# MySQL에서 데이터 불러오기
+def load_data_from_mysql():
+    conn = get_mysql_connection()
 
     try:
         with conn.cursor() as cursor:
@@ -156,13 +159,25 @@ def embed_all_json_from_mysql():
         records, part = process_json_item(item), partition_name
         total_chunks += len(records[0])
         main_collection.insert(records, partition_name=part)
+        mark_as_embedded(item.get("id"))
 
         logging.info(f"Inserted {len(records[0])} chunks into partition '{partition_name}'")
 
     main_collection.flush()
     logging.info(f"Total {total_chunks} chunks inserted into Milvus.")
 
+# Milvus insert 후 MySQL에 is_embedded 업데이트
+def mark_as_embedded(content_id):
+    conn = get_mysql_connection()
 
-#실행ㅋ
+    try:
+        with conn.cursor() as cursor:
+            update_sql = "UPDATE contents SET is_embedded = 1 WHERE id = %s"
+            cursor.execute(update_sql, (content_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+#실행
 if __name__ == "__main__":
     embed_all_json_from_mysql()
