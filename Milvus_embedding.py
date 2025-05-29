@@ -121,7 +121,7 @@ def process_json_item(item: dict):
 
     insert_data = []
     for chunk in chunks:
-        full_chunk = f"{item.get("urlTitle")}\n{chunk}"
+        full_chunk = f"{item.get('urlTitle', '')}\n{chunk}"
         embedding = openai.embeddings.create(input=full_chunk, model="text-embedding-ada-002").data[0].embedding
         keywords = extract_keywords(chunk)
         ## 추출된 키워드들을 키워드 데이터베이스에 저장
