@@ -5,7 +5,7 @@ from openai import OpenAI
 from keyword_extractor import extract_keywords
 import os
 import logging
-import kss
+import re
 
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
@@ -94,10 +94,16 @@ def load_data_from_mysql():
         conn.close()
 
 
+def simple_sentence_split(text):
+    sentence_endings = re.compile(r'(?<!\b\d)(?<=[.!?])\s+(?=[A-Z가-힣])')
+    sentences = sentence_endings.split(text.strip())
+    return [s.strip() for s in sentences if s.strip()]
+
 # 텍스트 청킹 및 임베딩
 def process_json_item(item: dict):
     text = item.get("text", "")
-    sentences = kss.split_sentences(text)
+    sentences = simple_sentence_split(text)
+
     chunks = []
     current_chunk = ""
     chunk_size = 500
