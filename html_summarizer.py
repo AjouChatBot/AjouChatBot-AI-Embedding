@@ -41,8 +41,8 @@ def load_data_from_mysql():
             sql = """
                 SELECT c.id, data, url_title, org_file_name AS file_name, file_ref_index AS file_index
                 FROM contents c
-                LEFT JOIN scrap_info si ON c.id = si.content_id
-                WHERE c.content_text IS NULL OR c.content_text = ''  -- 아직 요약 안 된 항목만
+                LEFT JOIN scrap_info si ON c.log_id = si.id
+                WHERE (c.content_text IS NULL OR c.content_text = '') AND c.data_type = 0  -- 아직 요약 안 된 항목 중 data_type=0
             """
             cursor.execute(sql)
             return cursor.fetchall()

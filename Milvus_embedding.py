@@ -52,6 +52,7 @@ else:
 # OpenAI API 설정
 openai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+
 def get_mysql_connection():
     return pymysql.connect(
         host=os.getenv("DB_HOST"),
@@ -63,6 +64,7 @@ def get_mysql_connection():
         cursorclass=pymysql.cursors.DictCursor
     )
 
+
 # MySQL에서 데이터 불러오기
 def load_data_from_mysql():
     conn = get_mysql_connection()
@@ -71,23 +73,26 @@ def load_data_from_mysql():
         with conn.cursor() as cursor:
             sql = """
                 SELECT c.id, content_text AS text, c.created_at AS createAt,
-                       scrap_url AS scrapUrl, url_title AS urlTitle, c.data_type AS dataType, 
-                       org_file_name AS fileName, file_ref_index AS fileIndex,
-                       c.category AS category
+               scrap_url AS scrapUrl, url_title AS urlTitle, c.data_type AS dataType, 
+               org_file_name AS fileName, file_ref_index AS fileIndex,
+               c.category AS category
                 FROM contents c
-                LEFT JOIN scrap_info si ON c.id = si.content_id
+                LEFT JOIN scrap_info si ON c.log_id = si.id
+                WHERE content_text IS NOT NULL AND TRIM(content_text) != ''
             """
             cursor.execute(sql)
             results = cursor.fetchall()
             data_type_map = {0: "text", 1: "img", 2: "document"}
             for row in results:
                 if "createAt" in row:
-                    row["createAt"] = row["createAt"].isoformat() if isinstance(row["createAt"], (datetime,)) else row["createAt"]
+                    row["createAt"] = row["createAt"].isoformat() if isinstance(row["createAt"], (datetime,)) else row[
+                        "createAt"]
                 if "dataType" in row:
                     row["dataType"] = data_type_map.get(row["dataType"], str(row["dataType"]))
             return results
     finally:
         conn.close()
+
 
 # 텍스트 청킹 및 임베딩
 def process_json_item(item: dict):
@@ -141,6 +146,7 @@ def process_json_item(item: dict):
     fields = list(map(list, zip(*insert_data)))
     return fields
 
+
 # MySQL에서 전체 데이터 처리 후 Milvus 삽입
 def embed_all_json_from_mysql():
     raw_data = load_data_from_mysql()
@@ -149,7 +155,8 @@ def embed_all_json_from_mysql():
     logging.info("Starting embedding process for all MySQL data...")
 
     for item in raw_data:
-        partition_name = item.get("category", "default").replace("-", "_")
+        category = item.get("category") or "default"
+        partition_name = category.replace("-", "_")
 
         logging.info(f"Processing item ID: {item.get('id')} with category: {partition_name}")
 
@@ -166,6 +173,7 @@ def embed_all_json_from_mysql():
     main_collection.flush()
     logging.info(f"Total {total_chunks} chunks inserted into Milvus.")
 
+
 # Milvus insert 후 MySQL에 is_embedded 업데이트
 def mark_as_embedded(content_id):
     conn = get_mysql_connection()
@@ -178,6 +186,7 @@ def mark_as_embedded(content_id):
     finally:
         conn.close()
 
-#실행
+
+# 실행
 if __name__ == "__main__":
     embed_all_json_from_mysql()
