@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrap-summarizer
+  namespace: amate
+  labels:
+    app: scrap-summarizer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scrap-summarizer
+  template:
+    metadata:
+      labels:
+        app: scrap-summarizer
+    spec:
+      containers:
+      - name: scrap-summarizer
+        image: ajoumate/scrap_summarizer:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: MYSQL_HOST
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: MYSQL_HOST
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: MYSQL_PASSWORD
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: MYSQL_DATABASE
+        - name: MYSQL_PORT
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: MYSQL_PORT
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: OPENAI_API_KEY
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m" 

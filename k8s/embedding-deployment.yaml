@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrap-embedder
+  namespace: amate
+  labels:
+    app: scrap-embedder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scrap-embedder
+  template:
+    metadata:
+      labels:
+        app: scrap-embedder
+    spec:
+      containers:
+      - name: scrap-embedder
+        image: ajoumate/scrap_embedder:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: MYSQL_HOST
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: MYSQL_HOST
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: MYSQL_PASSWORD
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: MYSQL_DATABASE
+        - name: MYSQL_PORT
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: MYSQL_PORT
+        - name: MILVUS_HOST
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: MILVUS_HOST
+        - name: MILVUS_PORT
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: MILVUS_PORT
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: sealed-app-config
+              key: OPENAI_API_KEY
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m" 
