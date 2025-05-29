@@ -5,7 +5,7 @@ kiwipiepy>=0.17.0
 keybert>=0.7.0
 sentence-transformers>=2.2.2
 pymilvus==2.3.4
-marshmallow>=3.13.0
+marshmallow>=3.13.0,<4.0.0
 environs>=9.5.0
 kss>=2.5.2
 tqdm>4
