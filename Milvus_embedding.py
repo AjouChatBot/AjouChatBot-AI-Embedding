@@ -100,7 +100,7 @@ def process_json_item(item: dict):
     sentences = kss.split_sentences(text)
     chunks = []
     current_chunk = ""
-    chunk_size = 300
+    chunk_size = 500
     for sentence in sentences:
         if len(current_chunk) + len(sentence) <= chunk_size:
             current_chunk += " " + sentence
